@@ -264,6 +264,8 @@ with a `NEXT_PUBLIC_` prefix or commit `.env.local`. `BUSINESS_TZ` (default `Asi
 - The owner adds staff logins under **Settings → Users** (and can reset passwords or remove access).
 - Passwords are hashed with scrypt; sessions last 30 days in an `httpOnly` cookie, and only a hash of each
   session token is stored in the database.
+- Password guessing is limited: after 5 wrong tries on a username (or 20 from one network) within
+  15 minutes, logins are refused for 15 minutes. A successful login clears that username's count.
 - `src/proxy.ts` redirects visitors without a session to `/login`; every page, Server Action and API route
   also verifies the session itself (`requireUser()` / `requireOwner()` in `src/lib/auth.ts`).
 - `/api/summary` accepts a logged-in user, or `Authorization: Bearer <CRON_SECRET>` for schedulers

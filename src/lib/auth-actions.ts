@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { FormState } from "./actions";
 import { createSession, deleteSession, hashPassword, requireOwner, verifyPassword } from "./auth";
@@ -34,10 +35,43 @@ function safeNext(value: string) {
 // Compared against when the username doesn't exist, so a wrong username takes as long as a wrong password.
 let dummyHash: Promise<string> | undefined;
 
+// Password guessing limits, per 15 minutes: 5 wrong tries on one username, or 20 from one network.
+const LOCKOUT_MINUTES = 15;
+const MAX_PER_USERNAME = 5;
+const MAX_PER_IP = 20;
+
+async function clientIp() {
+  // On Vercel the first x-forwarded-for entry is the real client address.
+  const forwarded = (await headers()).get("x-forwarded-for") ?? "";
+  return forwarded.split(",")[0].trim() || "unknown";
+}
+
+async function isLockedOut(username: string, ip: string) {
+  const counts = await get<{ by_user: number; by_ip: number }>(
+    `SELECT count(*) FILTER (WHERE username = ?)::int AS by_user,
+            count(*) FILTER (WHERE ip = ?)::int AS by_ip
+     FROM login_failures WHERE created_at > now() - make_interval(mins => ?)`,
+    username,
+    ip,
+    LOCKOUT_MINUTES,
+  );
+  return (counts?.by_user ?? 0) >= MAX_PER_USERNAME || (counts?.by_ip ?? 0) >= MAX_PER_IP;
+}
+
+async function recordFailure(username: string, ip: string) {
+  await run("DELETE FROM login_failures WHERE created_at < now() - interval '1 day'");
+  await run("INSERT INTO login_failures (username, ip) VALUES (?, ?)", username, ip);
+}
+
 export async function login(_: FormState, fd: FormData): Promise<FormState> {
   const username = normalizeUsername(text(fd, "username"));
   const password = String(fd.get("password") ?? "");
   if (!username || !password) return { error: "Enter your username and password." };
+
+  const ip = await clientIp();
+  if (await isLockedOut(username, ip)) {
+    return { error: `Too many wrong attempts. Try again in ${LOCKOUT_MINUTES} minutes.` };
+  }
 
   const user = await get<{ id: number; password_hash: string }>(
     "SELECT id, password_hash FROM users WHERE username = ? AND active",
@@ -45,8 +79,12 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   );
   dummyHash ??= hashPassword("timing-placeholder");
   const valid = await verifyPassword(password, user?.password_hash ?? (await dummyHash));
-  if (!user || !valid) return { error: "Wrong username or password." };
+  if (!user || !valid) {
+    await recordFailure(username, ip);
+    return { error: "Wrong username or password." };
+  }
 
+  await run("DELETE FROM login_failures WHERE username = ?", username);
   await createSession(user.id);
   redirect(safeNext(text(fd, "next")));
 }

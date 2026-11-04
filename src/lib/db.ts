@@ -81,6 +81,14 @@ const SCHEMA = [
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  // Failed logins, used to slow down password guessing. Rows older than a day are deleted.
+  `CREATE TABLE IF NOT EXISTS login_failures (
+    id         SERIAL PRIMARY KEY,
+    username   TEXT        NOT NULL,
+    ip         TEXT        NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_login_failures_created ON login_failures(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id)`,
   `CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id)`,
