@@ -68,7 +68,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <Field label="Unit">
                 <input name="unit" defaultValue={product.unit} className={inputClass} />
               </Field>
-              <Field label="SKU / code">
+              <Field label="Barcode / code">
                 <input name="sku" defaultValue={product.sku ?? ""} className={inputClass} />
               </Field>
             </div>

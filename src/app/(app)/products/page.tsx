@@ -69,7 +69,7 @@ export default async function ProductsPage() {
               <Field label="Unit">
                 <input name="unit" className={inputClass} placeholder="pcs" />
               </Field>
-              <Field label="SKU / code">
+              <Field label="Barcode / code">
                 <input name="sku" className={inputClass} />
               </Field>
             </div>

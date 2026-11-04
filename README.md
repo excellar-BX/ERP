@@ -186,7 +186,7 @@ The smallest version that still saves real time:
 ### Phase 2: Operations
 - [ ] Purchasing: supplier management, purchase orders, goods received
 - [ ] Auto-drafted purchase orders from low-stock alerts
-- [ ] Barcode scanning
+- [x] Barcode scanning (USB/Bluetooth scanners, plus phone camera on supported browsers)
 - [ ] Batch and expiry tracking, with expiry alerts
 - [ ] Returns and credit notes
 - [ ] Offline mode with background sync

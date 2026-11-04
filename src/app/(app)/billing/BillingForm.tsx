@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Card, Field, inputClass, primaryButton } from "@/components/ui";
 import { createInvoice } from "@/lib/actions";
 import { formatINR, formatQty, toPaise } from "@/lib/format";
@@ -46,8 +47,28 @@ export function BillingForm({ products, customers }: { products: Product[]; cust
   }
 
   function add(product: Product) {
-    setQty(product.id, (cart.get(product.id) ?? 0) + 1);
+    const qty = (cart.get(product.id) ?? 0) + 1;
+    if (qty > product.stock) {
+      setError(`Only ${formatQty(product.stock)} ${product.unit} of ${product.name} left in stock.`);
+      return;
+    }
+    setQty(product.id, qty);
     setError(null);
+  }
+
+  // A scanned barcode (or typed code) that exactly matches a product's code wins over a name search.
+  function addByCode(code: string) {
+    const q = code.trim().toLowerCase();
+    if (!q) return;
+    const product =
+      products.find((p) => p.sku?.toLowerCase() === q) ??
+      products.find((p) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q));
+    if (!product) {
+      setError(`Nothing matches “${code.trim()}”.`);
+      return;
+    }
+    add(product);
+    setSearch("");
   }
 
   function submit() {
@@ -68,20 +89,22 @@ export function BillingForm({ products, customers }: { products: Product[]; cust
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
       <Card>
-        <input
-          autoFocus
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && matches.length > 0) {
-              e.preventDefault();
-              add(matches[0]);
-              setSearch("");
-            }
-          }}
-          placeholder="Search product or scan code, then press Enter…"
-          className={`${inputClass} mb-4 py-3 text-base`}
-        />
+        <div className="mb-4 flex gap-2">
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addByCode(search);
+              }
+            }}
+            placeholder="Search product or scan barcode, then press Enter…"
+            className={`${inputClass} py-3 text-base`}
+          />
+          <BarcodeScanner onCode={addByCode} />
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
           {matches.map((p) => {
             const inCart = cart.get(p.id) ?? 0;
