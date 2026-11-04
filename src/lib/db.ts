@@ -64,6 +64,23 @@ const SCHEMA = [
     note       TEXT,
     created_at TIMESTAMPTZ      NOT NULL DEFAULT now()
   )`,
+  // Logins. role is 'owner' (everything) or 'staff' (no settings or user management).
+  `CREATE TABLE IF NOT EXISTS users (
+    id            SERIAL PRIMARY KEY,
+    name          TEXT        NOT NULL,
+    username      TEXT        NOT NULL UNIQUE,
+    password_hash TEXT        NOT NULL,
+    role          TEXT        NOT NULL DEFAULT 'staff' CHECK (role IN ('owner', 'staff')),
+    active        BOOLEAN     NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  // Only a SHA-256 hash of each session token is stored, so a leaked table can't be used to log in.
+  `CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id)`,
   `CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id)`,

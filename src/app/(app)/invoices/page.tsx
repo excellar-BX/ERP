@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Badge, Card, Empty, PageHeader, Table, primaryButton } from "@/components/ui";
 import { formatDate, formatINR, invoiceNo } from "@/lib/format";
 import { listInvoices } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 export default async function InvoicesPage() {
+  await requireUser();
   const invoices = await listInvoices();
 
   return (

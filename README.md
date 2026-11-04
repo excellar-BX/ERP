@@ -169,7 +169,7 @@ The smallest version that still saves real time:
 - [x] Finalise tech stack and architecture (Next.js + Neon Postgres)
 - [ ] Set up repository, CI and development environment
 - [x] Design database schema (products, stock, customers, invoices, payments)
-- [ ] Authentication and basic user accounts
+- [x] Authentication and basic user accounts (owner + staff roles)
 
 ### Phase 1: MVP (core loop)
 - [x] Product and inventory management
@@ -200,7 +200,7 @@ The smallest version that still saves real time:
 - [ ] Data export (Excel/PDF, Tally-compatible)
 
 ### Phase 4: Team & Growth
-- [ ] Staff accounts with role-based access
+- [x] Staff accounts with role-based access (owner / staff)
 - [ ] Attendance (mobile check-in) and payroll
 - [ ] Multi-branch / multi-warehouse support and stock transfers
 - [ ] Audit trail and approval workflows
@@ -248,26 +248,47 @@ cp .env.example .env.local   # then paste your Neon connection string into DATAB
 npm run dev
 ```
 
-Open http://localhost:3000, go to **Settings**, and click **Load demo data** to try it out, or add your own products.
+Open http://localhost:3000. On the very first visit you'll be asked to **create the owner account**.
+Then go to **Settings** and click **Load demo data** to try it out, or add your own products.
 
 Tables are created automatically on first request. `DATABASE_URL` is only read on the server; never expose it
 with a `NEXT_PUBLIC_` prefix or commit `.env.local`. `BUSINESS_TZ` (default `Asia/Kolkata`) sets what "today" means in reports.
+
+### Logins & roles
+
+| Role | Can do |
+|---|---|
+| **Owner** | Everything, including Settings, demo data, removing products, and adding / removing users |
+| **Staff** | Billing, invoices, products & stock, customers & payments |
+
+- The owner adds staff logins under **Settings → Users** (and can reset passwords or remove access).
+- Passwords are hashed with scrypt; sessions last 30 days in an `httpOnly` cookie, and only a hash of each
+  session token is stored in the database.
+- `src/proxy.ts` redirects visitors without a session to `/login`; every page, Server Action and API route
+  also verifies the session itself (`requireUser()` / `requireOwner()` in `src/lib/auth.ts`).
+- `/api/summary` accepts a logged-in user, or `Authorization: Bearer <CRON_SECRET>` for schedulers
+  (set `CRON_SECRET` in `.env.local`).
 
 ### Project structure
 
 ```
 src/
+  proxy.ts                Redirects logged-out visitors to /login
   app/
-    page.tsx              Dashboard (today's numbers, low stock, dues, recent bills)
-    billing/              New bill (fast POS-style screen)
-    invoices/             Bill list + printable / WhatsApp-shareable bill
-    products/             Products, stock, restock & stock history
-    customers/            Customers, dues (khata), payments, reminders
-    settings/             Business details, UPI ID, owner WhatsApp, demo data
+    login/                Login + first-run owner setup
+    (app)/                Everything behind the login (shared sidebar layout)
+      page.tsx            Dashboard (today's numbers, low stock, dues, recent bills)
+      billing/            New bill (fast POS-style screen)
+      invoices/           Bill list + printable / WhatsApp-shareable bill
+      products/           Products, stock, restock & stock history
+      customers/          Customers, dues (khata), payments, reminders
+      settings/           Business details, UPI ID, users, demo data (owner only)
     api/summary/          GET daily summary as JSON (for schedulers)
   components/             Shared UI
   lib/
-    db.ts                 Neon Postgres pool, schema, transactions
+    db.ts                 Neon connection (HTTP for reads, Pool for transactions), schema
+    auth.ts               Passwords, sessions, requireUser() / requireOwner()
+    auth-actions.ts       Login, logout, owner setup, user management
     queries.ts            All reads (reports, balances, summaries)
     actions.ts            All writes (Server Actions, validated, transactional)
     whatsapp.ts           Reminder / bill / summary messages and links

@@ -236,3 +236,11 @@ export async function dailySummary(date?: string): Promise<DailySummary> {
     topProducts: row!.top_products,
   };
 }
+
+// ---------- Users ----------
+
+export type User = { id: number; name: string; username: string; role: "owner" | "staff" };
+
+export function listUsers() {
+  return all<User>("SELECT id, name, username, role FROM users WHERE active ORDER BY role, lower(name)");
+}

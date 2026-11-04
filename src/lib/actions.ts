@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { get, run, transaction } from "./db";
 import { formatQty, toPaise } from "./format";
 import { SETTING_KEYS, type Product } from "./queries";
+import { requireOwner, requireUser } from "./auth";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -38,6 +39,7 @@ async function handle(fn: () => Promise<string>): Promise<FormState> {
 // ---------- Settings ----------
 
 export async function saveSettings(_: FormState, fd: FormData) {
+  await requireOwner();
   return handle(async () => {
     if (!text(fd, "businessName")) throw new UserError("Business name is required.");
     await transaction(async (tx) => {
@@ -56,6 +58,7 @@ export async function saveSettings(_: FormState, fd: FormData) {
 // ---------- Products ----------
 
 export async function addProduct(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const name = text(fd, "name");
     if (!name) throw new UserError("Product name is required.");
@@ -84,6 +87,7 @@ export async function addProduct(_: FormState, fd: FormData) {
 }
 
 export async function updateProduct(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const name = text(fd, "name");
     if (!name) throw new UserError("Product name is required.");
@@ -102,6 +106,7 @@ export async function updateProduct(_: FormState, fd: FormData) {
 }
 
 export async function adjustStock(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const id = Number(fd.get("id"));
     const reason = text(fd, "reason") === "adjust" ? "adjust" : "restock";
@@ -125,6 +130,7 @@ export async function adjustStock(_: FormState, fd: FormData) {
 }
 
 export async function archiveProduct(fd: FormData) {
+  await requireOwner();
   await run("UPDATE products SET active = FALSE WHERE id = ?", Number(fd.get("id")));
   refresh();
   redirect("/products");
@@ -140,6 +146,7 @@ function phoneFrom(fd: FormData) {
 }
 
 export async function addCustomer(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const name = text(fd, "name");
     if (!name) throw new UserError("Customer name is required.");
@@ -149,6 +156,7 @@ export async function addCustomer(_: FormState, fd: FormData) {
 }
 
 export async function updateCustomer(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const name = text(fd, "name");
     if (!name) throw new UserError("Customer name is required.");
@@ -158,6 +166,7 @@ export async function updateCustomer(_: FormState, fd: FormData) {
 }
 
 export async function recordPayment(_: FormState, fd: FormData) {
+  await requireUser();
   return handle(async () => {
     const customerId = Number(fd.get("customerId"));
     const paise = toPaise(amount(fd, "amount", "Amount"));
@@ -185,6 +194,7 @@ export type NewInvoice = {
 };
 
 export async function createInvoice(input: NewInvoice): Promise<FormState> {
+  await requireUser();
   let invoiceId: number;
   try {
     invoiceId = await transaction(async (tx) => {
@@ -265,6 +275,7 @@ export async function createInvoice(input: NewInvoice): Promise<FormState> {
 // ---------- Demo data ----------
 
 export async function loadDemoData() {
+  await requireOwner();
   return handle(async () => {
     if (await get("SELECT id FROM products LIMIT 1")) throw new UserError("Demo data can only be loaded into an empty shop.");
     await transaction(async (tx) => {

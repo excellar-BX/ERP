@@ -9,14 +9,14 @@ const links = [
   { href: "/invoices", label: "Invoices" },
   { href: "/products", label: "Products" },
   { href: "/customers", label: "Customers & dues" },
-  { href: "/settings", label: "Settings" },
+  { href: "/settings", label: "Settings", ownerOnly: true },
 ];
 
-export function Nav() {
+export function Nav({ isOwner }: { isOwner: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="flex gap-1 overflow-x-auto md:flex-col">
-      {links.map((link) => {
+      {links.filter((link) => isOwner || !link.ownerOnly).map((link) => {
         const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
         return (
           <Link

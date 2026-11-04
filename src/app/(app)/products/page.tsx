@@ -4,8 +4,10 @@ import { Badge, Card, Empty, Field, PageHeader, Table, inputClass } from "@/comp
 import { addProduct } from "@/lib/actions";
 import { formatINR, formatQty } from "@/lib/format";
 import { listProducts } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 export default async function ProductsPage() {
+  await requireUser();
   const products = await listProducts();
   const stockValue = products.reduce((sum, p) => sum + Math.max(p.stock, 0) * p.cost, 0);
 

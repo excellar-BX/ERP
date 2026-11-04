@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Empty, PageHeader } from "@/components/ui";
 import { listCustomers, listProducts } from "@/lib/queries";
 import { BillingForm } from "./BillingForm";
+import { requireUser } from "@/lib/auth";
 
 export default async function BillingPage() {
+  await requireUser();
   const [products, allCustomers] = await Promise.all([listProducts(), listCustomers()]);
   const customers = allCustomers.map((c) => ({ id: c.id, name: c.name, phone: c.phone, balance: c.balance }));
 

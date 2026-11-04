@@ -5,8 +5,10 @@ import { addCustomer } from "@/lib/actions";
 import { formatDate, formatINR } from "@/lib/format";
 import { getSettings, listCustomers } from "@/lib/queries";
 import { reminderMessage, waLink } from "@/lib/whatsapp";
+import { requireUser } from "@/lib/auth";
 
 export default async function CustomersPage() {
+  await requireUser();
   const [settings, customers] = await Promise.all([getSettings(), listCustomers()]);
   const withDues = customers.filter((c) => c.balance > 0);
   const totalDues = withDues.reduce((sum, c) => sum + c.balance, 0);

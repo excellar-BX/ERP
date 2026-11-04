@@ -5,8 +5,10 @@ import { PageHeader, primaryButton, whatsappButton } from "@/components/ui";
 import { formatDate, formatINR, formatQty, invoiceNo } from "@/lib/format";
 import { getInvoice, getSettings } from "@/lib/queries";
 import { invoiceMessage, waLink } from "@/lib/whatsapp";
+import { requireUser } from "@/lib/auth";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
   const { id } = await params;
   const invoice = await getInvoice(Number(id));
   if (!invoice) notFound();

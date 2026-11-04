@@ -5,6 +5,7 @@ import { Badge, Card, Empty, Field, PageHeader, Table, dangerButton, inputClass 
 import { adjustStock, archiveProduct, updateProduct } from "@/lib/actions";
 import { formatDate, formatINR, formatQty, invoiceNo, toRupees } from "@/lib/format";
 import { getProduct, productMovements } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 const reasonLabels: Record<string, string> = {
   opening: "Opening stock",
@@ -14,6 +15,7 @@ const reasonLabels: Record<string, string> = {
 };
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
   const { id } = await params;
   const product = await getProduct(Number(id));
   if (!product) notFound();

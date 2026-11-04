@@ -6,8 +6,10 @@ import { recordPayment, updateCustomer } from "@/lib/actions";
 import { formatDate, formatINR, invoiceNo } from "@/lib/format";
 import { customerLedger, getCustomer, getSettings } from "@/lib/queries";
 import { reminderMessage, waLink } from "@/lib/whatsapp";
+import { requireUser } from "@/lib/auth";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
   const { id } = await params;
   const customer = await getCustomer(Number(id));
   if (!customer) notFound();

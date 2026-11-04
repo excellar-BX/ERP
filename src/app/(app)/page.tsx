@@ -3,8 +3,10 @@ import { Badge, Card, Empty, PageHeader, Stat, primaryButton, secondaryButton, w
 import { formatDate, formatINR, formatQty, invoiceNo } from "@/lib/format";
 import { customersWithDues, dailySummary, getSettings, listInvoices, lowStockProducts } from "@/lib/queries";
 import { reminderMessage, summaryMessage, waLink } from "@/lib/whatsapp";
+import { requireUser } from "@/lib/auth";
 
 export default async function DashboardPage() {
+  const user = await requireUser();
   const [settings, summary, lowStockAll, dues, recent] = await Promise.all([
     getSettings(),
     dailySummary(),
@@ -13,7 +15,7 @@ export default async function DashboardPage() {
     listInvoices(6),
   ]);
   const lowStock = lowStockAll.slice(0, 8);
-  const setupNeeded = !settings.ownerWhatsapp || !settings.upiId;
+  const setupNeeded = user.role === "owner" && (!settings.ownerWhatsapp || !settings.upiId);
 
   return (
     <>
