@@ -167,7 +167,7 @@ The smallest version that still saves real time:
 ### Phase 0: Foundation
 - [ ] Choose target niche and interview 5–10 business owners
 - [x] Finalise tech stack and architecture (Next.js + Neon Postgres)
-- [ ] Set up repository, CI and development environment
+- [x] Set up repository, CI and development environment (GitHub Actions: lint, type-check, build)
 - [x] Design database schema (products, stock, customers, invoices, payments)
 - [x] Authentication and basic user accounts (owner + staff roles)
 
