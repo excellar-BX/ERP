@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Badge, Card, Empty, Field, PageHeader, Table, dangerButton, inputClass } from "@/components/ui";
 import { adjustStock, archiveProduct, updateProduct } from "@/lib/actions";
-import { formatDate, formatINR, formatQty, invoiceNo, toRupees } from "@/lib/format";
+import { formatDate, formatINR, formatQty, invoiceNo, purchaseNo, toRupees } from "@/lib/format";
 import { getProduct, productMovements } from "@/lib/queries";
 import { requireUser } from "@/lib/auth";
 
@@ -12,6 +12,7 @@ const reasonLabels: Record<string, string> = {
   restock: "Restock",
   adjust: "Adjustment",
   sale: "Sale",
+  purchase: "Purchase",
 };
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -124,6 +125,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                       {m.invoice_id ? (
                         <Link href={`/invoices/${m.invoice_id}`} className="hover:underline">
                           {invoiceNo(m.invoice_id)}
+                        </Link>
+                      ) : m.purchase_id ? (
+                        <Link href={`/purchases/${m.purchase_id}`} className="hover:underline">
+                          {purchaseNo(m.purchase_id)}
                         </Link>
                       ) : (
                         m.note

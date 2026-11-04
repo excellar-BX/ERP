@@ -64,6 +64,44 @@ const SCHEMA = [
     note       TEXT,
     created_at TIMESTAMPTZ      NOT NULL DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS suppliers (
+    id         SERIAL PRIMARY KEY,
+    name       TEXT        NOT NULL,
+    phone      TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  // A purchase starts as an order sent to the supplier ('ordered') and adds stock once the goods arrive ('received').
+  // Only received purchases count towards what we owe the supplier.
+  `CREATE TABLE IF NOT EXISTS purchases (
+    id             SERIAL PRIMARY KEY,
+    supplier_id    INTEGER     NOT NULL REFERENCES suppliers(id),
+    status         TEXT        NOT NULL DEFAULT 'ordered' CHECK (status IN ('ordered', 'received')),
+    total          INTEGER     NOT NULL,
+    paid           INTEGER     NOT NULL DEFAULT 0,
+    payment_method TEXT,
+    note           TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    received_at    TIMESTAMPTZ
+  )`,
+  `CREATE TABLE IF NOT EXISTS purchase_items (
+    id          SERIAL PRIMARY KEY,
+    purchase_id INTEGER          NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+    product_id  INTEGER          NOT NULL REFERENCES products(id),
+    name        TEXT             NOT NULL,
+    qty         DOUBLE PRECISION NOT NULL,
+    cost        INTEGER          NOT NULL,
+    amount      INTEGER          NOT NULL
+  )`,
+  // Payments made to a supplier later (payment at receiving lives on purchases.paid).
+  `CREATE TABLE IF NOT EXISTS supplier_payments (
+    id          SERIAL PRIMARY KEY,
+    supplier_id INTEGER     NOT NULL REFERENCES suppliers(id),
+    amount      INTEGER     NOT NULL,
+    method      TEXT        NOT NULL DEFAULT 'cash',
+    note        TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS purchase_id INTEGER REFERENCES purchases(id)`,
   // Logins. role is 'owner' (everything) or 'staff' (no settings or user management).
   `CREATE TABLE IF NOT EXISTS users (
     id            SERIAL PRIMARY KEY,
@@ -94,6 +132,9 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id)`,
   `CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(product_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_supplier_payments_supplier ON supplier_payments(supplier_id)`,
 ];
 
 type Param = string | number | boolean | null;
@@ -123,9 +164,9 @@ function pool() {
   return (globalForDb.erpPool ??= new Pool({ connectionString: databaseUrl(), max: 5 }));
 }
 
+// Every statement is "IF NOT EXISTS", so retrying after a network error is safe.
 function ready() {
-  globalForDb.erpReady ??= http()
-    .transaction(SCHEMA.map((statement) => http().query(statement)))
+  globalForDb.erpReady ??= withRetry(() => http().transaction(SCHEMA.map((statement) => http().query(statement))))
     .then(() => undefined)
     .catch((error) => {
       globalForDb.erpReady = undefined; // retry on the next request

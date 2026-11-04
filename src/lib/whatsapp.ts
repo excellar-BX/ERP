@@ -1,5 +1,5 @@
-import { formatINR, formatQty, invoiceNo, toRupees } from "./format";
-import type { Customer, DailySummary, Settings, getInvoice } from "./queries";
+import { formatINR, formatQty, invoiceNo, purchaseNo, toRupees } from "./format";
+import type { Customer, DailySummary, Settings, getInvoice, getPurchase } from "./queries";
 
 // Messages are sent through WhatsApp "click to chat" links: one tap opens WhatsApp with
 // the message already written. Fully automatic sending needs the WhatsApp Business API (roadmap).
@@ -74,5 +74,19 @@ export function summaryMessage(settings: Settings, summary: DailySummary) {
     lines.push(``, `Top sellers:`);
     for (const p of summary.topProducts) lines.push(`• ${p.name}: ${formatQty(p.qty)} (${formatINR(p.amount)})`);
   }
+  return lines.join("\n");
+}
+
+export function purchaseOrderMessage(settings: Settings, purchase: NonNullable<Awaited<ReturnType<typeof getPurchase>>>) {
+  const lines = [
+    `Namaste ${purchase.supplier_name} 🙏`,
+    ``,
+    `*Order ${purchaseNo(purchase.id)}* from *${settings.businessName}*:`,
+    ``,
+    ...purchase.items.map((item) => `• ${item.name}: ${formatQty(item.qty)} ${item.unit}`),
+  ];
+  if (purchase.note) lines.push(``, purchase.note);
+  if (settings.address) lines.push(``, `Deliver to: ${settings.address}`);
+  lines.push(``, `Please confirm. Thank you!`);
   return lines.join("\n");
 }

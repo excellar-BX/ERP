@@ -184,8 +184,8 @@ The smallest version that still saves real time:
 - [ ] Pilot with 3–5 real businesses
 
 ### Phase 2: Operations
-- [ ] Purchasing: supplier management, purchase orders, goods received
-- [ ] Auto-drafted purchase orders from low-stock alerts
+- [x] Purchasing: supplier management, purchase orders, goods received
+- [x] Auto-drafted purchase orders from low-stock alerts
 - [x] Barcode scanning (USB/Bluetooth scanners, plus phone camera on supported browsers)
 - [ ] Batch and expiry tracking, with expiry alerts
 - [ ] Returns and credit notes
@@ -284,6 +284,8 @@ src/
       invoices/           Bill list + printable / WhatsApp-shareable bill
       products/           Products, stock, restock & stock history
       customers/          Customers, dues (khata), payments, reminders
+      purchases/          Purchase orders, goods received, reorder low stock
+      suppliers/          Suppliers, what you owe them, payments made
       settings/           Business details, UPI ID, users, demo data (owner only)
     api/summary/          GET daily summary as JSON (for schedulers)
   components/             Shared UI
@@ -292,16 +294,20 @@ src/
     auth.ts               Passwords, sessions, requireUser() / requireOwner()
     auth-actions.ts       Login, logout, owner setup, user management
     queries.ts            All reads (reports, balances, summaries)
-    actions.ts            All writes (Server Actions, validated, transactional)
+    actions.ts            Writes for products, customers, billing, settings (Server Actions)
+    purchase-actions.ts   Writes for suppliers and purchases
+    form.ts               Shared helpers for Server Actions (validation, user-facing errors)
     whatsapp.ts           Reminder / bill / summary messages and links
     format.ts             Money (stored as paise), dates, quantities
 ```
 
 ### What works today (MVP)
 
-- **Billing:** tap or search products (Enter adds the top match), quantities, discount, partial payment, walk-in or credit sale
+- **Billing:** tap, search or scan products (a barcode scanner or the phone camera; Enter adds the exact code match, else the top match), quantities, discount, partial payment, walk-in or credit sale
 - **Automatic stock updates** on every sale, with a full stock history for each product
-- **Low-stock alerts** on the dashboard and products page
+- **Low-stock alerts** on the dashboard and products page, with one tap to draft a reorder
+- **Purchases:** send an order to a supplier on WhatsApp, then mark it received to add stock and update cost prices; or record goods received straight away
+- **Supplier dues:** what you owe each supplier, a ledger, and payments made
 - **Customer dues (khata):** balance tracking, a ledger, and payment recording
 - **One-tap WhatsApp reminders** with the outstanding amount and a UPI payment link
 - **Bills:** printable, and shareable on WhatsApp

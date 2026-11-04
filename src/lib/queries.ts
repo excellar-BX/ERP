@@ -66,13 +66,15 @@ export type StockMovement = {
   change: number;
   reason: string;
   invoice_id: number | null;
+  purchase_id: number | null;
   note: string | null;
   created_at: Date;
 };
 
 export function productMovements(productId: number) {
   return all<StockMovement>(
-    "SELECT id, change, reason, invoice_id, note, created_at FROM stock_movements WHERE product_id = ? ORDER BY id DESC LIMIT 50",
+    `SELECT id, change, reason, invoice_id, purchase_id, note, created_at
+       FROM stock_movements WHERE product_id = ? ORDER BY id DESC LIMIT 50`,
     productId,
   );
 }
@@ -166,6 +168,88 @@ export async function getInvoice(id: number) {
     id,
   );
   return { ...invoice, items };
+}
+
+// ---------- Suppliers & purchases ----------
+
+export type Supplier = { id: number; name: string; phone: string | null; created_at: Date; balance: number };
+
+// Balance = received purchases not paid at the time − payments made later. Positive means we owe the supplier.
+const SUPPLIER_SQL = `
+  SELECT s.id, s.name, s.phone, s.created_at,
+    (COALESCE((SELECT SUM(total - paid) FROM purchases WHERE supplier_id = s.id AND status = 'received'), 0)
+      - COALESCE((SELECT SUM(amount) FROM supplier_payments WHERE supplier_id = s.id), 0))::float8 AS balance
+  FROM suppliers s`;
+
+export function listSuppliers() {
+  return all<Supplier>(`SELECT * FROM (${SUPPLIER_SQL}) t ORDER BY balance DESC, lower(name)`);
+}
+
+export function getSupplier(id: number) {
+  return get<Supplier>(`${SUPPLIER_SQL} WHERE s.id = ?`, id);
+}
+
+export type SupplierLedgerEntry = {
+  kind: "purchase" | "payment";
+  id: number;
+  created_at: Date;
+  status: "ordered" | "received" | null;
+  debit: number;
+  credit: number;
+  method: string | null;
+  note: string | null;
+};
+
+export function supplierLedger(supplierId: number) {
+  return all<SupplierLedgerEntry>(
+    `SELECT 'purchase' AS kind, id, COALESCE(received_at, created_at) AS created_at, status,
+            total AS debit, paid AS credit, payment_method AS method, note
+       FROM purchases WHERE supplier_id = ?
+     UNION ALL
+     SELECT 'payment' AS kind, id, created_at, NULL AS status, 0 AS debit, amount AS credit, method, note
+       FROM supplier_payments WHERE supplier_id = ?
+     ORDER BY created_at DESC, kind DESC`,
+    supplierId,
+    supplierId,
+  );
+}
+
+export type PurchaseRow = {
+  id: number;
+  supplier_id: number;
+  supplier_name: string;
+  supplier_phone: string | null;
+  status: "ordered" | "received";
+  total: number;
+  paid: number;
+  payment_method: string | null;
+  note: string | null;
+  created_at: Date;
+  received_at: Date | null;
+  item_count: number;
+};
+
+const PURCHASE_SQL = `
+  SELECT p.*, s.name AS supplier_name, s.phone AS supplier_phone,
+    (SELECT COUNT(*) FROM purchase_items WHERE purchase_id = p.id)::int AS item_count
+  FROM purchases p JOIN suppliers s ON s.id = p.supplier_id`;
+
+export function listPurchases(limit = 200) {
+  return all<PurchaseRow>(`${PURCHASE_SQL} ORDER BY p.id DESC LIMIT ?`, limit);
+}
+
+export type PurchaseItem = { id: number; product_id: number; name: string; unit: string; qty: number; cost: number; amount: number };
+
+export async function getPurchase(id: number) {
+  const purchase = await get<PurchaseRow>(`${PURCHASE_SQL} WHERE p.id = ?`, id);
+  if (!purchase) return undefined;
+  const items = await all<PurchaseItem>(
+    `SELECT pi.id, pi.product_id, pi.name, pr.unit, pi.qty, pi.cost, pi.amount
+       FROM purchase_items pi JOIN products pr ON pr.id = pi.product_id
+      WHERE pi.purchase_id = ? ORDER BY pi.id`,
+    id,
+  );
+  return { ...purchase, items };
 }
 
 // ---------- Daily summary ----------

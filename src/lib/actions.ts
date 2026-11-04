@@ -1,40 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { get, run, transaction } from "./db";
 import { formatQty, toPaise } from "./format";
 import { SETTING_KEYS, type Product } from "./queries";
 import { requireOwner, requireUser } from "./auth";
+import { UserError, amount, handle, phoneFrom, refresh, text, type FormState } from "./form";
 
-export type FormState = { error?: string; ok?: string };
-
-// Errors meant for the person using the form (as opposed to bugs).
-class UserError extends Error {}
-
-const refresh = () => revalidatePath("/", "layout");
-
-function text(fd: FormData, key: string) {
-  return String(fd.get(key) ?? "").trim();
-}
-
-function amount(fd: FormData, key: string, label: string, { allowNegative = false } = {}) {
-  const raw = text(fd, key);
-  const value = raw === "" ? 0 : Number(raw);
-  if (!Number.isFinite(value) || (!allowNegative && value < 0)) throw new UserError(`${label} must be a valid number.`);
-  return value;
-}
-
-async function handle(fn: () => Promise<string>): Promise<FormState> {
-  try {
-    const ok = await fn();
-    refresh();
-    return { ok };
-  } catch (error) {
-    if (error instanceof UserError) return { error: error.message };
-    throw error;
-  }
-}
+export type { FormState };
 
 // ---------- Settings ----------
 
@@ -137,13 +110,6 @@ export async function archiveProduct(fd: FormData) {
 }
 
 // ---------- Customers ----------
-
-function phoneFrom(fd: FormData) {
-  const phone = text(fd, "phone");
-  const digits = phone.replace(/\D/g, "");
-  if (phone && (digits.length < 10 || digits.length > 13)) throw new UserError("Enter a valid phone number (10 digits).");
-  return phone || null;
-}
 
 export async function addCustomer(_: FormState, fd: FormData) {
   await requireUser();

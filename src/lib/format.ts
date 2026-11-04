@@ -19,6 +19,8 @@ export function formatQty(qty: number) {
 
 export const invoiceNo = (id: number) => `INV-${String(id).padStart(5, "0")}`;
 
+export const purchaseNo = (id: number) => `PO-${String(id).padStart(5, "0")}`;
+
 // Accepts a timestamp, or a plain "YYYY-MM-DD" calendar date.
 export function formatDate(value: Date | string, withTime = true) {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {

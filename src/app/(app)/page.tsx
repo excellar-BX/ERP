@@ -66,9 +66,15 @@ export default async function DashboardPage() {
         <Card
           title={`Low stock (${summary.lowStockCount})`}
           action={
-            <Link href="/products" className="text-sm font-medium text-emerald-700 hover:underline">
-              All products
-            </Link>
+            summary.lowStockCount > 0 ? (
+              <Link href="/purchases/new?lowstock=1" className={secondaryButton}>
+                Reorder
+              </Link>
+            ) : (
+              <Link href="/products" className="text-sm font-medium text-emerald-700 hover:underline">
+                All products
+              </Link>
+            )
           }
         >
           {lowStock.length === 0 ? (
